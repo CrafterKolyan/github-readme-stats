@@ -1,55 +1,68 @@
-function expsf(lambda, x) {
-  return Math.exp(-lambda * x);
+function iexpsf(x, lambda=1.) {
+  return Math.exp(lambda * x);
 }
 
 function calculateRank({
-  totalRepos,
-  totalCommits,
+  repos,
+  commits,
   contributions,
   followers,
   prs,
   issues,
   stargazers,
 }) {
-  // value of statistics should be equal to 1 / <average number per user> (see https://en.wikipedia.org/wiki/Exponential_distribution#Mean,_variance,_moments_and_median)
-  const COMMITS_VALUE = 1 / 10000;
-  const CONTRIBS_VALUE = 1 / 1000;
-  const ISSUES_VALUE = 1 / 100;
-  const STARS_VALUE = 1 / 400;
-  const PRS_VALUE = 1 / 300;
-  const FOLLOWERS_VALUE = 1 / 100;
-  const REPO_VALUE = 1 / 20;
+  // value of lambdas should be equal to 1 / <average number per user>
+  // see https://en.wikipedia.org/wiki/Exponential_distribution
+  const REPOS_LAMBDA = 1 / 20, REPOS_WEIGHT = 1.;
+  const COMMITS_LAMBDA = 1 / 10000, COMMITS_WEIGHT = 1.;
+  const CONTRIBS_LAMBDA = 1 / 1000, CONTRIBS_WEIGHT = 1.;
+  const FOLLOWERS_LAMBDA = 1 / 100, FOLLOWERS_WEIGHT = 1.;
+  const PRS_LAMBDA = 1 / 300, PRS_WEIGHT = 1.;
+  const ISSUES_LAMBDA = 1 / 100, ISSUES_WEIGHT = 1.;
+  const STARS_LAMBDA = 1 / 400, STARS_WEIGHT = 1.;
+  
+  const TOTAL_WEIGHT = (
+    REPOS_WEIGHT +
+    COMMITS_WEIGHT +
+    CONTRIBS_WEIGHT +
+    FOLLOWERS_WEIGHT +
+    PRS_WEIGHT +
+    ISSUES_WEIGHT +
+    STARS_WEIGHT
+  );
+  
+  const rank = TOTAL_WEIGHT / (
+    REPOS_WEIGHT * iexpsf(repos, REPOS_LAMBDA) +
+    COMMITS_WEIGHT * iexpsf(commits, COMMITS_LAMBDA) +
+    CONTRIBS_WEIGHT * iexpsf(contributions, CONTRIBS_LAMBDA) +
+    FOLLOWERS_WEIGHT * iexpsf(followers, FOLLOWERS_LAMBDA) +
+    PRS_WEIGHT * iexpsf(prs, PRS_LAMBDA) +
+    ISSUES_WEIGHT * iexpsf(issues, ISSUES_LAMBDA) +
+    STARS_WEIGHT * iexpsf(stargazers, STARS_LAMBDA)
+  );
 
-  const RANK_S_VALUE = 1;
-  const RANK_DOUBLE_A_VALUE = 25;
-  const RANK_A2_VALUE = 45;
-  const RANK_A3_VALUE = 60;
-  const RANK_B_VALUE = 100;
-
-  const normalizedScore = 700 / (
-      1 / expsf(COMMITS_VALUE, totalCommits) +
-      1 / expsf(CONTRIBS_VALUE, contributions) +
-      1 / expsf(ISSUES_VALUE, issues) +
-      1 / expsf(STARS_VALUE, stargazers) +
-      1 / expsf(PRS_VALUE, prs) +
-      1 / expsf(FOLLOWERS_VALUE, followers) +
-      1 / expsf(REPO_VALUE, totalRepos))
-
+  const RANK_S_PLUS = 0.01;
+  const RANK_S = 0.1;
+  const RANK_A_PLUS = 0.25;
+  const RANK_A = 0.50;
+  const RANK_B_PLUS = 0.75;
+  
   let level = "";
 
-  if (normalizedScore < RANK_S_VALUE) {
+  if (rank < RANK_S_PLUS)
     level = "S+";
-  } else if (normalizedScore < RANK_DOUBLE_A_VALUE) {
+  else if (rank < RANK_S)
     level = "S";
-  } else if (normalizedScore < RANK_A2_VALUE) {
-    level = "A++";
-  } else if (normalizedScore < RANK_A3_VALUE) {
+  else if (rank < RANK_A_PLUS)
     level = "A+";
-  } else {
+  else if (rank < RANK_A)
+    level = "A";
+  else if (rank < RANK_B_PLUS)
     level = "B+";
-  }
+  else
+    level = "B+";
 
-  return { level, score: normalizedScore };
+  return { level, score: rank};
 }
 
 module.exports = calculateRank;
